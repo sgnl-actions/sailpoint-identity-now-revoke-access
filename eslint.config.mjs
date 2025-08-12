@@ -12,7 +12,8 @@ export default [
         process: 'readonly',
         Buffer: 'readonly',
         fetch: 'readonly',
-        setTimeout: 'readonly'
+        setTimeout: 'readonly',
+        URL: 'readonly'
       }
     },
     rules: {
@@ -33,6 +34,7 @@ export default [
       globals: {
         describe: 'readonly',
         test: 'readonly',
+        it: 'readonly',
         expect: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
