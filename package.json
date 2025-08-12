@@ -1,7 +1,7 @@
 {
   "name": "@sgnl-actions/sailpoint-identity-now-revoke-access",
   "version": "1.0.0",
-  "description": "SailPoint IdentityNow revoke access action for SGNL Job Service",
+  "description": "SailPoint IdentityNow revoke access action for SGNL CAEP Hub",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
