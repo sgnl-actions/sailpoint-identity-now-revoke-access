@@ -167,6 +167,8 @@ export default {
       const errorBody = await response.json();
       if (errorBody.detailCode) {
         errorMessage = `Failed to create revoke access request: ${errorBody.detailCode} - ${errorBody.trackingId || ''}`;
+      } else if (errorBody.messages && errorBody.messages.length > 0) {
+        errorMessage = `Failed to create revoke access request: ${errorBody.messages[0].text}`;
       } else if (errorBody.message) {
         errorMessage = `Failed to create revoke access request: ${errorBody.message}`;
       }

@@ -38,7 +38,8 @@ export default [
         expect: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
-        jest: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',        jest: 'readonly',
         global: 'writable'
       }
     }
