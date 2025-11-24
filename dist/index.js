@@ -104,6 +104,7 @@ var script = {
    * @param {string} params.clientMetadata - Optional JSON string of client metadata for the request
    * @param {string} params.itemClientMetadata - Optional JSON string of client metadata for the item
    * @param {Object} context - Execution context with env, secrets, outputs
+   * @param {string} context.secrets.BEARER_AUTH_TOKEN - Bearer token for SailPoint IdentityNow API authentication
    * @returns {Object} Job results
    */
   invoke: async (params, context) => {
@@ -130,8 +131,8 @@ var script = {
     }
 
     // Validate SailPoint API token is present
-    if (!context.secrets?.SAILPOINT_API_TOKEN) {
-      throw new Error('Missing required secret: SAILPOINT_API_TOKEN');
+    if (!context.secrets?.BEARER_AUTH_TOKEN) {
+      throw new Error('Missing required secret: BEARER_AUTH_TOKEN');
     }
 
     // Validate required comment for revoke
@@ -143,7 +144,7 @@ var script = {
     const response = await revokeAccess(
       params,
       sailpointDomain,
-      context.secrets.SAILPOINT_API_TOKEN
+      context.secrets.BEARER_AUTH_TOKEN
     );
 
     // Handle the response
@@ -170,6 +171,8 @@ var script = {
       const errorBody = await response.json();
       if (errorBody.detailCode) {
         errorMessage = `Failed to create revoke access request: ${errorBody.detailCode} - ${errorBody.trackingId || ''}`;
+      } else if (errorBody.messages && errorBody.messages.length > 0) {
+        errorMessage = `Failed to create revoke access request: ${errorBody.messages[0].text}`;
       } else if (errorBody.message) {
         errorMessage = `Failed to create revoke access request: ${errorBody.message}`;
       }
@@ -216,7 +219,7 @@ var script = {
       const retryResponse = await revokeAccess(
         params,
         sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN
+        context.secrets.BEARER_AUTH_TOKEN
       );
 
       if (retryResponse.ok) {
@@ -246,7 +249,7 @@ var script = {
       const retryResponse = await revokeAccess(
         params,
         sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN
+        context.secrets.BEARER_AUTH_TOKEN
       );
 
       if (retryResponse.ok) {

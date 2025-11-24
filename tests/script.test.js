@@ -6,7 +6,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       ENVIRONMENT: 'test'
     },
     secrets: {
-      SAILPOINT_API_TOKEN: 'test-sailpoint-token-123456'
+      BEARER_AUTH_TOKEN: 'test-sailpoint-token-123456'
     },
     outputs: {}
   };
@@ -175,7 +175,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         secrets: {}
       };
 
-      await expect(script.invoke(params, contextNoToken)).rejects.toThrow('Missing required secret: SAILPOINT_API_TOKEN');
+      await expect(script.invoke(params, contextNoToken)).rejects.toThrow('Missing required secret: BEARER_AUTH_TOKEN');
     });
 
     test('should handle API error response', async () => {
