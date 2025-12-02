@@ -2,8 +2,8 @@ import script from '../src/script.mjs';
 
 describe('SailPoint IdentityNow Revoke Access Script', () => {
   const mockContext = {
-    env: {
-      ENVIRONMENT: 'test'
+    environment: {
+      ADDRESS: 'https://test.identitynow.com'
     },
     secrets: {
       BEARER_AUTH_TOKEN: 'test-sailpoint-token-123456'
@@ -65,7 +65,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -87,9 +87,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ROLE',
         itemId: 'role-123',
-        sailpointDomain: 'test.identitynow.com',
-        itemComment: 'Access revocation required',
-        comment: 'Needed for project X'
+        itemComment: 'Access revocation required'
       };
 
       const result = await script.invoke(params, mockContext);
@@ -106,7 +104,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ENTITLEMENT',
         itemId: 'ent-999',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -121,7 +119,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       const params = {
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -133,7 +131,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'INVALID_TYPE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -144,21 +142,27 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       const params = {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
       await expect(script.invoke(params, mockContext)).rejects.toThrow('Invalid or missing itemId parameter');
     });
 
-    test('should throw error for missing sailpointDomain', async () => {
+    test('should throw error for missing address', async () => {
       const params = {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
-        itemId: 'ap-789'
+        itemId: 'ap-789',
+        itemComment: 'Access revocation required'
       };
 
-      await expect(script.invoke(params, mockContext)).rejects.toThrow('Invalid or missing sailpointDomain parameter');
+      const contextNoAddress = {
+        environment: {},
+        secrets: { BEARER_AUTH_TOKEN: 'test-token' }
+      };
+
+      await expect(script.invoke(params, contextNoAddress)).rejects.toThrow('No URL specified. Provide address parameter or ADDRESS environment variable');
     });
 
     test('should throw error for missing API token', async () => {
@@ -166,16 +170,15 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
         itemComment: 'Access revocation required'
       };
-      
+
       const contextNoToken = {
-        ...mockContext,
+        environment: { ADDRESS: 'https://test.identitynow.com' },
         secrets: {}
       };
 
-      await expect(script.invoke(params, contextNoToken)).rejects.toThrow('Missing required secret: BEARER_AUTH_TOKEN');
+      await expect(script.invoke(params, contextNoToken)).rejects.toThrow('No authentication configured');
     });
 
     test('should handle API error response', async () => {
@@ -192,7 +195,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'invalid-id',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -213,7 +216,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
+        
         itemComment: 'Access revocation required'
       };
 
@@ -222,49 +225,19 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
   });
 
   describe('error handler', () => {
-    test('should retry on rate limit error', async () => {
-      const errorWithStatus = new Error('API rate limit exceeded');
-      errorWithStatus.statusCode = 429;
-      
-      const params = {
-        error: errorWithStatus,
-        identityId: 'identity-456',
-        itemType: 'ACCESS_PROFILE',
-        itemId: 'ap-789',
-        sailpointDomain: 'test.identitynow.com',
-        itemComment: 'Access revocation required'
-      };
+    it('should rethrow errors', async () => {
+      const testError = new Error('Test error');
+      const params = { error: testError };
+      const context = {};
+      await expect(script.error(params, context)).rejects.toThrow('Test error');
+    });
 
-      // Mock successful retry
-      global.fetch = () => Promise.resolve({
-        ok: true,
-        status: 202,
-        json: async () => ({
-          id: 'request-retry-123'
-        })
-      });
-
-      const contextWithShortBackoff = {
-        ...mockContext,
-        environment: {
-          RATE_LIMIT_BACKOFF_MS: '100' // Short backoff for testing
-        }
-      };
-
-      const result = await script.error(params, contextWithShortBackoff);
-
-      // The error handler should successfully recover
-      expect(result.requestId).toBe('request-retry-123');
-      expect(result.recoveryMethod).toBe('rate_limit_retry');
-    }, 10000); // Increase test timeout
-
-    test('should throw for non-retryable errors', async () => {
-      const params = {
-        error: new Error('Invalid credentials'),
-        identityId: 'identity-456'
-      };
-
-      await expect(script.error(params, mockContext)).rejects.toThrow('Unrecoverable error creating revoke access request for identity identity-456: Invalid credentials');
+    it('should rethrow errors with status codes', async () => {
+      const error = new Error('HTTP 429');
+      error.statusCode = 429;
+      const params = { error };
+      const context = {};
+      await expect(script.error(params, context)).rejects.toThrow('HTTP 429');
     });
   });
 
