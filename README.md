@@ -168,7 +168,7 @@ Use `npm run dev` to test your script locally with mock data. Update `scripts/de
   "id": "revoke-access-job-123",
   "type": "nodejs-20",
   "script": {
-    "repository": "github.com/sgnl/sailpoint-identity-now-revoke-access",
+    "repository": "github.com/sgnl-actions/sailpoint-identity-now-revoke-access",
     "version": "v1.0.0",
     "type": "nodejs"
   },
