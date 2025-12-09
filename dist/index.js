@@ -2,6 +2,162 @@
 'use strict';
 
 /**
+ * SGNL Actions - Authentication Utilities
+ *
+ * Shared authentication utilities for SGNL actions.
+ * Supports: Bearer Token, Basic Auth, OAuth2 Client Credentials, OAuth2 Authorization Code
+ */
+
+/**
+ * Get OAuth2 access token using client credentials flow
+ * @param {Object} config - OAuth2 configuration
+ * @param {string} config.tokenUrl - Token endpoint URL
+ * @param {string} config.clientId - Client ID
+ * @param {string} config.clientSecret - Client secret
+ * @param {string} [config.scope] - OAuth2 scope
+ * @param {string} [config.audience] - OAuth2 audience
+ * @param {string} [config.authStyle] - Auth style: 'InParams' or 'InHeader' (default)
+ * @returns {Promise<string>} Access token
+ */
+async function getClientCredentialsToken(config) {
+  const { tokenUrl, clientId, clientSecret, scope, audience, authStyle } = config;
+
+  if (!tokenUrl || !clientId || !clientSecret) {
+    throw new Error('OAuth2 Client Credentials flow requires tokenUrl, clientId, and clientSecret');
+  }
+
+  const params = new URLSearchParams();
+  params.append('grant_type', 'client_credentials');
+
+  if (scope) {
+    params.append('scope', scope);
+  }
+
+  if (audience) {
+    params.append('audience', audience);
+  }
+
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Accept': 'application/json'
+  };
+
+  if (authStyle === 'InParams') {
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+  } else {
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    headers['Authorization'] = `Basic ${credentials}`;
+  }
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers,
+    body: params.toString()
+  });
+
+  if (!response.ok) {
+    let errorText;
+    try {
+      const errorData = await response.json();
+      errorText = JSON.stringify(errorData);
+    } catch {
+      errorText = await response.text();
+    }
+    throw new Error(
+      `OAuth2 token request failed: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error('No access_token in OAuth2 response');
+  }
+
+  return data.access_token;
+}
+
+/**
+ * Get the Authorization header value from context using available auth method.
+ * Supports: Bearer Token, Basic Auth, OAuth2 Authorization Code, OAuth2 Client Credentials
+ *
+ * @param {Object} context - Execution context with environment and secrets
+ * @param {Object} context.environment - Environment variables
+ * @param {Object} context.secrets - Secret values
+ * @returns {Promise<string>} Authorization header value (e.g., "Bearer xxx" or "Basic xxx")
+ */
+async function getAuthorizationHeader(context) {
+  const env = context.environment || {};
+  const secrets = context.secrets || {};
+
+  // Method 1: Simple Bearer Token
+  if (secrets.BEARER_AUTH_TOKEN) {
+    const token = secrets.BEARER_AUTH_TOKEN;
+    return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+
+  // Method 2: Basic Auth (username + password)
+  if (secrets.BASIC_PASSWORD && secrets.BASIC_USERNAME) {
+    const credentials = Buffer.from(`${secrets.BASIC_USERNAME}:${secrets.BASIC_PASSWORD}`).toString('base64');
+    return `Basic ${credentials}`;
+  }
+
+  // Method 3: OAuth2 Authorization Code - use pre-existing access token
+  if (secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN) {
+    const token = secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN;
+    return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+
+  // Method 4: OAuth2 Client Credentials - fetch new token
+  if (secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET) {
+    const tokenUrl = env.OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL;
+    const clientId = env.OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID;
+    const clientSecret = secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET;
+
+    if (!tokenUrl || !clientId) {
+      throw new Error('OAuth2 Client Credentials flow requires TOKEN_URL and CLIENT_ID in env');
+    }
+
+    const token = await getClientCredentialsToken({
+      tokenUrl,
+      clientId,
+      clientSecret,
+      scope: env.OAUTH2_CLIENT_CREDENTIALS_SCOPE,
+      audience: env.OAUTH2_CLIENT_CREDENTIALS_AUDIENCE,
+      authStyle: env.OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE
+    });
+
+    return `Bearer ${token}`;
+  }
+
+  throw new Error(
+    'No authentication configured. Provide one of: ' +
+    'BEARER_AUTH_TOKEN, BASIC_USERNAME/BASIC_PASSWORD, ' +
+    'OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN, or OAUTH2_CLIENT_CREDENTIALS_*'
+  );
+}
+
+/**
+ * Get the base URL/address for API calls
+ * @param {Object} params - Request parameters
+ * @param {string} [params.address] - Address from params
+ * @param {Object} context - Execution context
+ * @returns {string} Base URL
+ */
+function getBaseUrl(params, context) {
+  const env = context.environment || {};
+  const address = params?.address || env.ADDRESS;
+
+  if (!address) {
+    throw new Error('No URL specified. Provide address parameter or ADDRESS environment variable');
+  }
+
+  // Remove trailing slash if present
+  return address.endsWith('/') ? address.slice(0, -1) : address;
+}
+
+/**
  * SailPoint IdentityNow Revoke Access Action
  *
  * Creates an access request in SailPoint IdentityNow to revoke access to roles,
@@ -12,18 +168,16 @@
  * Helper function to create an access request in SailPoint IdentityNow
  * @private
  */
-async function revokeAccess(params, sailpointDomain, authToken) {
+async function revokeAccess(params, baseUrl, authToken) {
   const {
     identityId,
     itemType,
     itemId,
     itemComment,
-    itemRemoveDate,
-    clientMetadata,
-    itemClientMetadata
+    itemRemoveDate
   } = params;
 
-  const url = new URL('/v3/access-requests', `https://${sailpointDomain}`);
+  const url = new URL('/v3/access-requests', baseUrl);
 
   // Build request body according to SailPoint API spec
   const requestBody = {
@@ -52,35 +206,11 @@ async function revokeAccess(params, sailpointDomain, authToken) {
     }
   }
 
-  // Add optional item client metadata (should be a JSON string)
-  if (itemClientMetadata) {
-    try {
-      // Validate it's valid JSON by parsing
-      JSON.parse(itemClientMetadata);
-      requestBody.requestedItems[0].clientMetadata = itemClientMetadata;
-    } catch {
-      console.error('Invalid itemClientMetadata JSON string, skipping');
-    }
-  }
-
-  // Add optional request-level client metadata
-  if (clientMetadata) {
-    try {
-      // Validate it's valid JSON by parsing
-      JSON.parse(clientMetadata);
-      requestBody.clientMetadata = clientMetadata;
-    } catch {
-      console.error('Invalid clientMetadata JSON string, skipping');
-    }
-  }
-
-  // Ensure auth token has Bearer prefix
-  const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
-
+  // authToken is already formatted as a complete Authorization header value
   const response = await fetch(url.toString(), {
     method: 'POST',
     headers: {
-      'Authorization': authHeader,
+      'Authorization': authToken,
       'Accept': 'application/json',
       'Content-Type': 'application/json'
     },
@@ -93,21 +223,37 @@ async function revokeAccess(params, sailpointDomain, authToken) {
 
 var script = {
   /**
-   * Main execution handler - creates an access request in SailPoint IdentityNow
-   * @param {Object} params - Job input parameters
-   * @param {string} params.identityId - The ID of the identity requesting access
-   * @param {string} params.itemType - Type of access item (ACCESS_PROFILE, ROLE, or ENTITLEMENT)
-   * @param {string} params.itemId - The ID of the access item to grant
-   * @param {string} params.sailpointDomain - The SailPoint IdentityNow tenant domain
-   * @param {string} params.itemComment - Optional comment for the access request
+   * Main execution handler - creates an access revoke request in SailPoint IdentityNow
+   * @param {Object} params - Input parameters
+   * @param {string} params.identityId - The ID of the identity requesting access revocation (required)
+   * @param {string} params.itemType - Type of access item (ACCESS_PROFILE, ROLE, or ENTITLEMENT) (required)
+   * @param {string} params.itemId - The ID of the access item to revoke (required)
+   * @param {string} params.itemComment - Comment for the access revoke request (required)
+   * @param {string} params.address - Optional SailPoint IdentityNow base URL
    * @param {string} params.itemRemoveDate - Optional ISO 8601 date when access should be removed
-   * @param {string} params.clientMetadata - Optional JSON string of client metadata for the request
-   * @param {string} params.itemClientMetadata - Optional JSON string of client metadata for the item
-   * @param {Object} context - Execution context with env, secrets, outputs
-   * @returns {Object} Job results
+   *
+   * @param {Object} context - Execution context with secrets and environment
+   * @param {string} context.environment.ADDRESS - Default SailPoint IdentityNow API base URL
+   *
+   * The configured auth type will determine which of the following environment variables and secrets are available
+   * @param {string} context.secrets.BEARER_AUTH_TOKEN
+   *
+   * @param {string} context.secrets.BASIC_USERNAME
+   * @param {string} context.secrets.BASIC_PASSWORD
+   *
+   * @param {string} context.secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_AUDIENCE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_SCOPE
+   * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL
+   *
+   * @param {string} context.secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN
+   *
+   * @returns {Promise<Object>} Action result
    */
   invoke: async (params, context) => {
-    const { identityId, itemType, itemId, sailpointDomain } = params;
+    const { identityId, itemType, itemId } = params;
 
     console.log(`Starting SailPoint IdentityNow revoke access request for identity: ${identityId}`);
     console.log(`Revoking ${itemType}: ${itemId}`);
@@ -125,25 +271,23 @@ var script = {
     if (!itemId || typeof itemId !== 'string') {
       throw new Error('Invalid or missing itemId parameter');
     }
-    if (!sailpointDomain || typeof sailpointDomain !== 'string') {
-      throw new Error('Invalid or missing sailpointDomain parameter');
-    }
 
-    // Validate SailPoint API token is present
-    if (!context.secrets?.SAILPOINT_API_TOKEN) {
-      throw new Error('Missing required secret: SAILPOINT_API_TOKEN');
-    }
+    // Get base URL using utility function
+    const baseUrl = getBaseUrl(params, context);
 
     // Validate required comment for revoke
     if (!params.itemComment || typeof params.itemComment !== 'string') {
       throw new Error('itemComment is required for revoke access requests');
     }
 
+    // Get authorization header
+    const authHeader = await getAuthorizationHeader(context);
+
     // Make the API request to create revoke request
     const response = await revokeAccess(
       params,
-      sailpointDomain,
-      context.secrets.SAILPOINT_API_TOKEN
+      baseUrl,
+      authHeader
     );
 
     // Handle the response
@@ -170,6 +314,8 @@ var script = {
       const errorBody = await response.json();
       if (errorBody.detailCode) {
         errorMessage = `Failed to create revoke access request: ${errorBody.detailCode} - ${errorBody.trackingId || ''}`;
+      } else if (errorBody.messages && errorBody.messages.length > 0) {
+        errorMessage = `Failed to create revoke access request: ${errorBody.messages[0].text}`;
       } else if (errorBody.message) {
         errorMessage = `Failed to create revoke access request: ${errorBody.message}`;
       }
@@ -190,84 +336,15 @@ var script = {
   },
 
   /**
-   * Error recovery handler - attempts to recover from retryable errors
+   * Error handler - re-throws errors to let framework handle retry logic
    * @param {Object} params - Original params plus error information
    * @param {Object} context - Execution context
    * @returns {Object} Recovery results
    */
-  error: async (params, context) => {
-    const { error, identityId, itemType, itemId, sailpointDomain } = params;
-    const statusCode = error.statusCode;
-
-    console.error(`Revoke access request failed for identity ${identityId}: ${error.message}`);
-
-    // Get configurable backoff times from environment
-    const rateLimitBackoffMs = parseInt(context.environment?.RATE_LIMIT_BACKOFF_MS || '30000', 10);
-    const serviceErrorBackoffMs = parseInt(context.environment?.SERVICE_ERROR_BACKOFF_MS || '10000', 10);
-
-    // Handle rate limiting (429)
-    if (statusCode === 429 || error.message.includes('429') || error.message.includes('rate limit')) {
-      console.log(`Rate limited by SailPoint API - waiting ${rateLimitBackoffMs}ms before retry`);
-      await new Promise(resolve => setTimeout(resolve, rateLimitBackoffMs));
-
-      console.log(`Retrying revoke access request for identity ${identityId} after rate limit backoff`);
-
-      // Retry the operation using helper function
-      const retryResponse = await revokeAccess(
-        params,
-        sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN
-      );
-
-      if (retryResponse.ok) {
-        const responseData = await retryResponse.json();
-        console.log(`Successfully created revoke access request ${responseData.id} after retry`);
-
-        return {
-          requestId: responseData.id,
-          identityId: identityId,
-          itemType: itemType,
-          itemId: itemId,
-          status: responseData.status || 'PENDING',
-          requestedAt: new Date().toISOString(),
-          recoveryMethod: 'rate_limit_retry'
-        };
-      }
-    }
-
-    // Handle temporary service issues (502, 503, 504)
-    if ([502, 503, 504].includes(statusCode)) {
-      console.log(`SailPoint service temporarily unavailable - waiting ${serviceErrorBackoffMs}ms before retry`);
-      await new Promise(resolve => setTimeout(resolve, serviceErrorBackoffMs));
-
-      console.log(`Retrying revoke access request for identity ${identityId} after service interruption`);
-
-      // Retry the operation using helper function
-      const retryResponse = await revokeAccess(
-        params,
-        sailpointDomain,
-        context.secrets.SAILPOINT_API_TOKEN
-      );
-
-      if (retryResponse.ok) {
-        const responseData = await retryResponse.json();
-        console.log(`Successfully created revoke access request ${responseData.id} after service recovery`);
-
-        return {
-          requestId: responseData.id,
-          identityId: identityId,
-          itemType: itemType,
-          itemId: itemId,
-          status: responseData.status || 'PENDING',
-          requestedAt: new Date().toISOString(),
-          recoveryMethod: 'service_retry'
-        };
-      }
-    }
-
-    // Cannot recover from this error
-    console.error(`Unable to recover from error for identity ${identityId}`);
-    throw new Error(`Unrecoverable error creating revoke access request for identity ${identityId}: ${error.message}`);
+  error: async (params, _context) => {
+    const { error } = params;
+    // Re-throw error to let framework handle retry logic
+    throw error;
   },
 
   /**

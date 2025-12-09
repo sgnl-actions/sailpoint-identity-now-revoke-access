@@ -26,14 +26,6 @@ inputs:
       min: 1
       max: 255
 
-  sailpointDomain:
-    type: text
-    description: SailPoint IdentityNow tenant domain (e.g., example.api.identitynow.com)
-    required: true
-    validation:
-      min: 1
-      max: 255
-
   itemComment:
     type: text
     description: Comment for the access revocation request (required for revoke)
@@ -41,26 +33,20 @@ inputs:
     validation:
       max: 1000
 
+  address:
+    type: text
+    description: SailPoint IdentityNow base URL (e.g., https://example.identitynow.com)
+    required: false
+    validation:
+      min: 1
+      max: 255
+
   itemRemoveDate:
     type: text
     description: ISO 8601 date when access should be removed
     required: false
     validation:
       max: 100
-
-  clientMetadata:
-    type: text
-    description: JSON string of client metadata for the request
-    required: false
-    validation:
-      max: 5000
-
-  itemClientMetadata:
-    type: text
-    description: JSON string of client metadata for the item
-    required: false
-    validation:
-      max: 5000
 
 # Expected output structure
 outputs:
