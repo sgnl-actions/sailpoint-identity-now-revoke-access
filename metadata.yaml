@@ -35,11 +35,11 @@ inputs:
 
   address:
     type: text
-    description: SailPoint IdentityNow base URL (e.g., https://example.identitynow.com)
+    description: Optional SailPoint IdentityNow API base URL override
     required: false
     validation:
       min: 1
-      max: 255
+      max: 100
 
   itemRemoveDate:
     type: text
@@ -73,3 +73,7 @@ outputs:
   requestedAt:
     type: datetime
     description: When the access request was created (ISO 8601)
+
+  address:
+    type: text
+    description: The SailPoint IdentityNow API base URL used

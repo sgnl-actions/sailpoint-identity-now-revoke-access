@@ -101,27 +101,8 @@ export default {
     console.log(`Starting SailPoint IdentityNow revoke access request for identity: ${identityId}`);
     console.log(`Revoking ${itemType}: ${itemId}`);
 
-    // Validate required inputs
-    if (!identityId || typeof identityId !== 'string') {
-      throw new Error('Invalid or missing identityId parameter');
-    }
-    if (!itemType || typeof itemType !== 'string') {
-      throw new Error('Invalid or missing itemType parameter');
-    }
-    if (!['ACCESS_PROFILE', 'ROLE', 'ENTITLEMENT'].includes(itemType)) {
-      throw new Error('itemType must be ACCESS_PROFILE, ROLE, or ENTITLEMENT');
-    }
-    if (!itemId || typeof itemId !== 'string') {
-      throw new Error('Invalid or missing itemId parameter');
-    }
-
     // Get base URL using utility function
     const baseUrl = getBaseUrl(params, context);
-
-    // Validate required comment for revoke
-    if (!params.itemComment || typeof params.itemComment !== 'string') {
-      throw new Error('itemComment is required for revoke access requests');
-    }
 
     // Get authorization header
     const authHeader = await getAuthorizationHeader(context);
@@ -145,7 +126,8 @@ export default {
         itemType: itemType,
         itemId: itemId,
         status: responseData.status || 'PENDING',
-        requestedAt: new Date().toISOString()
+        requestedAt: new Date().toISOString(),
+        address: baseUrl
       };
     }
 
