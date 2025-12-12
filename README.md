@@ -12,6 +12,44 @@ This action creates an access request in SailPoint IdentityNow to revoke access 
 6. **Build**: `npm run build`
 7. **Release**: Create a git tag and push
 
+## Configuration
+
+### Authentication
+
+This action supports four authentication methods. Configure one of the following:
+
+#### Option 1: Bearer Token (SailPoint API Token)
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `BEARER_AUTH_TOKEN` | Secret | Yes | Bearer token for SailPoint IdentityNow API authentication |
+
+#### Option 2: Basic Authentication
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `BASIC_USERNAME` | Secret | Yes | Username for SailPoint IdentityNow authentication |
+| `BASIC_PASSWORD` | Secret | Yes | Password for SailPoint IdentityNow authentication |
+
+#### Option 3: OAuth2 Client Credentials
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` | Secret | Yes | OAuth2 client secret |
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID` | Environment | Yes | OAuth2 client ID |
+| `OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL` | Environment | Yes | OAuth2 token endpoint URL |
+| `OAUTH2_CLIENT_CREDENTIALS_SCOPE` | Environment | No | OAuth2 scope |
+| `OAUTH2_CLIENT_CREDENTIALS_AUDIENCE` | Environment | No | OAuth2 audience |
+| `OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE` | Environment | No | OAuth2 auth style |
+
+#### Option 4: OAuth2 Authorization Code
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN` | Secret | Yes | OAuth2 access token |
+
+### Environment Variables
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `ADDRESS` | Yes | Default SailPoint IdentityNow API base URL | `https://example.api.identitynow.com` |
+
 ## Input Parameters
 
 | Parameter | Type | Required | Description |
@@ -66,6 +104,7 @@ The action returns the following information:
 | `itemId` | String | The ID of the access item revoked |
 | `status` | String | The status of the revoke request |
 | `requestedAt` | DateTime | When the revoke request was created (ISO 8601) |
+| `address` | String | The SailPoint IdentityNow API base URL used |
 
 ## Event Handlers
 
@@ -188,15 +227,6 @@ Use `npm run dev` to test your script locally with mock data. Update `scripts/de
 }
 ```
 
-## Authentication
-
-This action supports the following authentication methods:
-- Bearer Token Authentication
-- Basic Authentication
-- OAuth2 Client Credentials
-- OAuth2 Authorization Code
-
-Configure the appropriate secrets and environment variables based on your chosen authentication method.
 
 ## Support
 
