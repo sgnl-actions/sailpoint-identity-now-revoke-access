@@ -32,5 +32,8 @@
     "jest": "^30.0.5",
     "js-yaml": "^4.1.0",
     "rollup": "^4.28.1"
+  },
+  "dependencies": {
+    "@sgnl-actions/utils": "github:sgnl-actions/utils#v1.0.3"
   }
 }

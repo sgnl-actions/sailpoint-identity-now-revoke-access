@@ -1,4 +1,4 @@
-import { getBaseUrl, getAuthorizationHeader } from '@sgnl-actions/utils';
+import { getBaseURL, getAuthorizationHeader, resolveJSONPathTemplates} from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Revoke Access Action
@@ -96,7 +96,15 @@ export default {
    * @returns {Promise<Object>} Action result
    */
   invoke: async (params, context) => {
-    const { identityId, itemType, itemId } = params;
+    const jobContext = context.data || {};
+
+    // Resolve JSONPath templates in params
+    const { result: resolvedParams, errors } = resolveJSONPathTemplates(params, jobContext);
+    if (errors.length > 0) {
+     console.warn('Template resolution errors:', errors);
+    }
+
+    const { identityId, itemType, itemId } = resolvedParams;
 
     console.log(`Starting SailPoint IdentityNow revoke access request for identity: ${identityId}`);
     console.log(`Revoking ${itemType}: ${itemId}`);
@@ -106,14 +114,14 @@ export default {
     }
 
     // Get base URL using utility function
-    const baseUrl = getBaseUrl(params, context);
+    const baseUrl = getBaseURL(resolvedParams, context);
 
     // Get authorization header
     const authHeader = await getAuthorizationHeader(context);
 
     // Make the API request to create revoke request
     const response = await revokeAccess(
-      params,
+      resolvedParams,
       baseUrl,
       authHeader
     );
