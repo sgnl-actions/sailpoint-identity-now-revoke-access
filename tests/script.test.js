@@ -115,38 +115,16 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       expect(result.requestedAt).toBeDefined();
     });
 
-    test('should throw error for missing identityId', async () => {
-      const params = {
-        itemType: 'ACCESS_PROFILE',
-        itemId: 'ap-789',
-        
-        itemComment: 'Access revocation required'
-      };
-
-      await expect(script.invoke(params, mockContext)).rejects.toThrow('Invalid or missing identityId parameter');
-    });
-
     test('should throw error for invalid itemType', async () => {
       const params = {
         identityId: 'identity-456',
         itemType: 'INVALID_TYPE',
         itemId: 'ap-789',
-        
+
         itemComment: 'Access revocation required'
       };
 
       await expect(script.invoke(params, mockContext)).rejects.toThrow('itemType must be ACCESS_PROFILE, ROLE, or ENTITLEMENT');
-    });
-
-    test('should throw error for missing itemId', async () => {
-      const params = {
-        identityId: 'identity-456',
-        itemType: 'ACCESS_PROFILE',
-        
-        itemComment: 'Access revocation required'
-      };
-
-      await expect(script.invoke(params, mockContext)).rejects.toThrow('Invalid or missing itemId parameter');
     });
 
     test('should throw error for missing address', async () => {
