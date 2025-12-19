@@ -20,7 +20,7 @@ async function revokeAccess(params, baseUrl, authToken) {
     itemRemoveDate
   } = params;
 
-  const url = new URL('/v3/access-requests', baseUrl);
+  const url = `${baseUrl}/v3/access-requests`;
 
   // Build request body according to SailPoint API spec
   const requestBody = {
@@ -50,7 +50,7 @@ async function revokeAccess(params, baseUrl, authToken) {
   }
 
   // authToken is already formatted as a complete Authorization header value
-  const response = await fetch(url.toString(), {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': authToken,
