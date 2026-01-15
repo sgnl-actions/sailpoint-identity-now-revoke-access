@@ -48,6 +48,16 @@ inputs:
     validation:
       max: 100
 
+  clientMetadata:
+    type: text
+    description: Optional arbitrary key-value pairs represented as an encoded JSON string
+    required: false
+
+  itemClientMetadata:
+    type: text
+    description: Optional arbitrary key-value pairs represented as an encoded JSON string
+    required: false
+
 # Expected output structure
 outputs:
   requestId:
