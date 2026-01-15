@@ -454,7 +454,9 @@ async function revokeAccess(params, baseUrl, authToken) {
     itemType,
     itemId,
     itemComment,
-    itemRemoveDate
+    itemRemoveDate,
+    clientMetadata,
+    itemClientMetadata
   } = params;
 
   const url = `${baseUrl}/v3/access-requests`;
@@ -471,11 +473,21 @@ async function revokeAccess(params, baseUrl, authToken) {
     ]
   };
 
+  // Add optional client metadata at request level
+  if (clientMetadata) {
+    requestBody.clientMetadata = clientMetadata;
+  }
+
   // Add required item comment for revoke requests
   if (!itemComment) {
     throw new Error('itemComment is required for REVOKE_ACCESS requests');
   }
   requestBody.requestedItems[0].comment = itemComment;
+
+  // Add optional item client metadata
+  if (itemClientMetadata) {
+    requestBody.requestedItems[0].clientMetadata = itemClientMetadata;
+  }
 
   // Add optional remove date (must be in RFC3339 format)
   if (itemRemoveDate) {
@@ -511,6 +523,8 @@ var script = {
    * @param {string} params.itemComment - Comment for the access revoke request (required)
    * @param {string} params.address - Optional SailPoint IdentityNow base URL
    * @param {string} params.itemRemoveDate - Optional ISO 8601 date when access should be removed
+   * @param {string} params.clientMetadata - Optional arbitrary key-value pairs as JSON string
+   * @param {string} params.itemClientMetadata - Optional arbitrary key-value pairs as JSON string
    *
    * @param {Object} context - Execution context with secrets and environment
    * @param {string} context.environment.ADDRESS - Default SailPoint IdentityNow API base URL
