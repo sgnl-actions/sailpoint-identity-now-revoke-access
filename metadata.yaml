@@ -16,7 +16,7 @@ inputs:
     description: Type of access item (ACCESS_PROFILE, ROLE, or ENTITLEMENT)
     required: true
     validation:
-      pattern: '^(ACCESS_PROFILE|ROLE|ENTITLEMENT)$'
+      enum: ["ACCESS_PROFILE", "ROLE", "ENTITLEMENT"]
 
   itemId:
     type: text
