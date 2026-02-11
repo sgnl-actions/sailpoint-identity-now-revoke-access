@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/sgnl-actions/schemas/main/metadata.schema.json
 name: sailpoint-identity-now-revoke-access
 description: Request to revoke access to resources in SailPoint IdentityNow
 
