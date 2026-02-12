@@ -1,4 +1,4 @@
-import { getBaseURL, getAuthorizationHeader} from '@sgnl-actions/utils';
+import { getBaseURL, createAuthHeaders} from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Revoke Access Action
@@ -11,7 +11,7 @@ import { getBaseURL, getAuthorizationHeader} from '@sgnl-actions/utils';
  * Helper function to create an access request in SailPoint IdentityNow
  * @private
  */
-async function revokeAccess(params, baseUrl, authToken) {
+async function revokeAccess(params, baseUrl, headers) {
   const {
     identityId,
     itemType,
@@ -64,11 +64,7 @@ async function revokeAccess(params, baseUrl, authToken) {
   // authToken is already formatted as a complete Authorization header value
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': authToken,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: JSON.stringify(requestBody)
   });
 
@@ -123,13 +119,13 @@ export default {
     const baseUrl = getBaseURL(params, context);
 
     // Get authorization header
-    const authHeader = await getAuthorizationHeader(context);
+    const headers = await createAuthHeaders(context);
 
     // Make the API request to create revoke request
     const response = await revokeAccess(
       params,
       baseUrl,
-      authHeader
+      headers
     );
 
     // Handle the response
