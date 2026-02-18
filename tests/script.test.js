@@ -93,7 +93,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       expect(result.status).toBe('PENDING');
       expect(result.requestedAt).toBeDefined();
       expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
-      
+
       // Basic verification that result is returned
       // Note: Without jest.fn() we can't verify call details
     });

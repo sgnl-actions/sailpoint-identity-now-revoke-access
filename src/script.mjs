@@ -1,4 +1,4 @@
-import { getBaseURL, createAuthHeaders} from '@sgnl-actions/utils';
+import { getBaseURL, createAuthHeaders } from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Revoke Access Action
