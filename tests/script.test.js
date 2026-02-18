@@ -37,7 +37,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         }]
       })
     });
-    
+
     // Set up global mocks
     global.fetch = fetchMock;
     global.URL = originalURL || class {
@@ -48,7 +48,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         return this.href;
       }
     };
-    
+
     // Mock console to avoid noise in tests
     global.console.log = () => {};
     global.console.error = () => {};
@@ -66,7 +66,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        
+
         itemComment: 'Access revocation required'
       };
 
@@ -93,7 +93,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       expect(result.status).toBe('PENDING');
       expect(result.requestedAt).toBeDefined();
       expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
-      
+
       // Basic verification that result is returned
       // Note: Without jest.fn() we can't verify call details
     });
@@ -110,7 +110,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
 
       expect(result.requestId).toBe('request-123');
       expect(result.requestedAt).toBeDefined();
-      
+
       // Basic verification that result is returned with comment
       // Note: Without jest.fn() we can't verify request details
     });
@@ -120,7 +120,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ENTITLEMENT',
         itemId: 'ent-999',
-        
+
         itemComment: 'Access revocation required'
       };
 
@@ -189,7 +189,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'invalid-id',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        
+
         itemComment: 'Access revocation required'
       };
 
@@ -210,7 +210,7 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
         identityId: 'identity-456',
         itemType: 'ACCESS_PROFILE',
         itemId: 'ap-789',
-        
+
         itemComment: 'Access revocation required'
       };
 
@@ -240,9 +240,9 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       const params = {
         identityId: 'identity-456'
       };
-      
+
       const result = await script.halt(params, mockContext);
-      
+
       expect(result.cleanupCompleted).toBe(true);
       expect(result.haltedAt).toBeDefined();
     });
