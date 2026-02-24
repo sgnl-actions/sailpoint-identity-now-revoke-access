@@ -33,6 +33,6 @@
     "rollup": "^4.28.1"
   },
   "dependencies": {
-    "@sgnl-actions/utils": "github:sgnl-actions/utils#v1.0.7"
+    "@sgnl-actions/utils": "github:sgnl-actions/utils#v1.0.8"
   }
 }

@@ -1,4 +1,4 @@
-import { getBaseURL, createAuthHeaders } from '@sgnl-actions/utils';
+import { getBaseURL, createHeaders } from '@sgnl-actions/utils';
 
 /**
  * SailPoint IdentityNow Revoke Access Action
@@ -119,7 +119,7 @@ export default {
     const baseUrl = getBaseURL(params, context);
 
     // Get authorization header
-    const headers = await createAuthHeaders(context);
+    const headers = await createHeaders(context);
 
     // Make the API request to create revoke request
     const response = await revokeAccess(
