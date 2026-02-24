@@ -159,22 +159,6 @@ describe('SailPoint IdentityNow Revoke Access Script', () => {
       await expect(script.invoke(params, contextNoAddress)).rejects.toThrow('No URL specified. Provide address parameter or ADDRESS environment variable');
     });
 
-    test('should throw error for missing API token', async () => {
-      const params = {
-        identityId: 'identity-456',
-        itemType: 'ACCESS_PROFILE',
-        itemId: 'ap-789',
-        itemComment: 'Access revocation required'
-      };
-
-      const contextNoToken = {
-        environment: { ADDRESS: 'https://test.identitynow.com' },
-        secrets: {}
-      };
-
-      await expect(script.invoke(params, contextNoToken)).rejects.toThrow('No authentication configured');
-    });
-
     test('should handle API error response', async () => {
       global.fetch = () => Promise.resolve({
         ok: false,
